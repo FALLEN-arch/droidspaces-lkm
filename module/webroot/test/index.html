@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fef7ff">
+<title>Droidspaces LKM — WebUI Mock</title>
+<base href="../">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Mock-specific overrides: no safe-area insets needed on desktop */
+  :root { --inset-top: 0px; --inset-bottom: 0px; }
+  body { max-width: 430px; margin: 0 auto; }
+</style>
+</head>
+<body class="booting">
+
+<!-- Mock KSU API: loads before index.js so window.ksu exists when sh() runs -->
+<script src="test/mock-ksu.js"></script>
+
+<!-- Actual WebUI module script (unchanged) -->
+<script src="index.js" type="module"></script>
+
+</body>
+</html>
