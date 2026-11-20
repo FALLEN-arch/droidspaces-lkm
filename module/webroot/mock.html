@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fef7ff">
+<title>Droidspaces LKM — WebUI Mock</title>
+<style>
+  /* Mock-specific overrides: no safe-area insets needed on desktop */
+  :root { --inset-top: 0px; --inset-bottom: 0px; }
+  body { max-width: 430px; margin: 0 auto; }
+
+  /* Safety net: if boot stalls, remove booting after 5s and show error */
+  #boot-error {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 9999; background: #ff4d4f; color: #fff; padding: 16px 24px;
+    border-radius: 10px; font: 14px/1.5 system-ui; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+</style>
+</head>
+<body class="booting">
+
+<div id="boot-error"></div>
+
+<script>
+// Safety net: unhide page after 5s even if boot stalls, and surface JS errors
+const bootError = document.getElementById('boot-error');
+window.onerror = (msg, url, line) => {
+  bootError.style.display = 'block';
+  bootError.textContent = `JS error: ${msg}\n${url}:${line}`;
+  document.body.classList.remove('booting');
+  return true;
+};
+window.addEventListener('unhandledrejection', (e) => {
+  bootError.style.display = 'block';
+  bootError.textContent = `Unhandled promise rejection: ${e.reason}`;
+  document.body.classList.remove('booting');
+});
+setTimeout(() => {
+  if (document.body.classList.contains('booting')) {
+    bootError.style.display = 'block';
+    bootError.textContent = 'Boot stalled after 5s — check console for errors';
+    document.body.classList.remove('booting');
+  }
+}, 5000);
+</script>
+
+<!-- Mock KSU API: loads before index.js so window.ksu exists when sh() runs -->
+<script src="mock-ksu.js"></script>
+
+<!-- Actual WebUI module script (unchanged) -->
+<script src="index.js" type="module"></script>
+
+</body>
+</html>
