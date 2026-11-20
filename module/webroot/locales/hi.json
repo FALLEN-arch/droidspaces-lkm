@@ -50,5 +50,14 @@
   "toast.saveFailed": "रूट सहेजने में विफल",
   "toast.copied": "कॉपी हो गया",
   "toast.copyFailed": "कॉपी विफल",
-  "toast.openFailed": "लिंक नहीं खुल सका"
+  "toast.openFailed": "लिंक नहीं खुल सका",
+  "about.monet": "MIUIx के लिए Monet सक्षम करें",
+  "err.bridge": "रूट मैनेजर से कनेक्ट नहीं हो सका। इस पेज को KernelSU / APatch / Magisk से खोलें।",
+  "err.timeout": "कमांड का समय समाप्त हो गया। डिवाइस व्यस्त हो सकता है।",
+  "err.retry": "फिर कोशिश करें",
+  "action.reboot": "अभी रीबूट करें",
+  "action.rebootConfirm": "पुष्टि के लिए फिर टैप करें",
+  "action.rebootFailed": "रीबूट विफल रहा",
+  "about.actions": "क्रियाएँ",
+  "diag.loading": "लोड हो रहा है…"
 }

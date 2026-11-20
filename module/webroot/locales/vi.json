@@ -50,5 +50,14 @@
   "toast.saveFailed": "Không thể lưu tuyến",
   "toast.copied": "Đã sao chép",
   "toast.copyFailed": "Sao chép thất bại",
-  "toast.openFailed": "Không thể mở liên kết"
+  "toast.openFailed": "Không thể mở liên kết",
+  "about.monet": "Bật Monet cho MIUIx",
+  "err.bridge": "Không thể kết nối với trình quản lý root. Hãy mở trang này từ KernelSU / APatch / Magisk.",
+  "err.timeout": "Lệnh hết thời gian chờ. Thiết bị có thể đang bận.",
+  "err.retry": "Thử lại",
+  "action.reboot": "Khởi động lại ngay",
+  "action.rebootConfirm": "Chạm lần nữa để xác nhận",
+  "action.rebootFailed": "Khởi động lại thất bại",
+  "about.actions": "Thao tác",
+  "diag.loading": "Đang tải…"
 }

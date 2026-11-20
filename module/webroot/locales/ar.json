@@ -50,5 +50,14 @@
   "toast.saveFailed": "تعذّر حفظ المسار",
   "toast.copied": "تم النسخ",
   "toast.copyFailed": "فشل النسخ",
-  "toast.openFailed": "تعذّر فتح الرابط"
+  "toast.openFailed": "تعذّر فتح الرابط",
+  "about.monet": "تفعيل Monet لـ MIUIx",
+  "err.bridge": "تعذّر الاتصال بمدير الروت. افتح هذه الصفحة من KernelSU / APatch / Magisk.",
+  "err.timeout": "انتهت مهلة الأمر. قد يكون الجهاز مشغولًا.",
+  "err.retry": "إعادة المحاولة",
+  "action.reboot": "إعادة التشغيل الآن",
+  "action.rebootConfirm": "اضغط مرة أخرى للتأكيد",
+  "action.rebootFailed": "فشلت إعادة التشغيل",
+  "about.actions": "إجراءات",
+  "diag.loading": "جارٍ التحميل…"
 }

@@ -50,5 +50,14 @@
   "toast.saveFailed": "Не вдалося зберегти маршрут",
   "toast.copied": "Скопійовано",
   "toast.copyFailed": "Не вдалося скопіювати",
-  "toast.openFailed": "Не вдалося відкрити посилання"
+  "toast.openFailed": "Не вдалося відкрити посилання",
+  "about.monet": "Увімкнути Monet для MIUIx",
+  "err.bridge": "Немає зв’язку з root-менеджером. Відкрийте сторінку з KernelSU / APatch / Magisk.",
+  "err.timeout": "Час виконання команди вичерпано. Можливо, пристрій зайнятий.",
+  "err.retry": "Повторити",
+  "action.reboot": "Перезавантажити зараз",
+  "action.rebootConfirm": "Натисніть ще раз для підтвердження",
+  "action.rebootFailed": "Не вдалося перезавантажити",
+  "about.actions": "Дії",
+  "diag.loading": "Завантаження…"
 }

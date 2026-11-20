@@ -13,6 +13,17 @@ const MODULES = [
   'droid_lkm_pids', 'droid_lkm_cpu', 'uart_guard', 'mali_nsfix', 'vkms'
 ];
 
+const STATE = '/data/adb/droidspaces_lkm.d';
+// 开机选项：开关 = 模块目录下对应标志文件是否存在（只在下次开机生效，不会热卸载任何模块）
+const FLAGS = [
+  { file: 'enable_vkms',        key: 'boot.vkms' },
+  { file: 'disable_pids',       key: 'boot.pids' },
+  { file: 'disable_cpu',        key: 'boot.cpu' },
+  { file: 'disable_uart_guard', key: 'boot.uart' },
+  { file: 'disable_mali',       key: 'boot.mali' },
+  { file: 'mali_nsfix_dryrun',  key: 'boot.dryrun' }
+];
+
 const $ = (id) => document.getElementById(id);
 
 /* ======================= shell 桥接 ======================= */
@@ -104,13 +115,28 @@ function pickLang() {
   return FALLBACK;
 }
 
-async function fetchLocale(code) {
-  try {
-    const r = await fetch(`./locales/${code}.json`);
-    return r.ok ? await r.json() : {};
-  } catch {
-    return {};
+const localeCache = new Map();
+
+function fetchLocale(code) {
+  if (!localeCache.has(code)) {
+    localeCache.set(code, (async () => {
+      try {
+        const r = await fetch(`./locales/${code}.json`);
+        return r.ok ? await r.json() : {};
+      } catch {
+        return {};
+      }
+    })());
   }
+  return localeCache.get(code);
+}
+
+// 打开语言菜单时在后台预取全部语言，选中后切换不再等网络
+let localesPrefetched = false;
+function prefetchLocales() {
+  if (localesPrefetched) return;
+  localesPrefetched = true;
+  LANGS.forEach((l) => fetchLocale(l.code));
 }
 
 function t(key, vars) {
@@ -157,26 +183,28 @@ const routeName = (r) => (dict[`route.short.${r}`] ?? r);
 
 /* ======================= 数据命令 ======================= */
 
+// 一次读取 /proc/modules，替代原先每个模块一次 grep（每次 grep 都是一个进程）
 const HOME_CMD = [
   `echo "route=$(cat ${MOD}/route 2>/dev/null || echo auto)"`,
   `echo "kernel=$(uname -r)"`,
   `echo "model=$(getprop ro.product.model 2>/dev/null)"`,
   `echo "version=$(grep -m1 '^version=' ${MOD}/module.prop 2>/dev/null | cut -d= -f2)"`,
   `[ -e /dev/mali0 ] && echo mali0=yes || echo mali0=no`,
-  `lsmod | grep -q '^mali_kbase' && echo kbase=yes || echo kbase=no`,
   `[ -e /dev/dri/renderD128 ] && echo render=yes || echo render=no`,
-  ...MODULES.map((m) =>
-    `grep -q '^${m} ' /proc/modules && echo "mod:${m}=yes" || echo "mod:${m}=no"`
-  )
+  `echo "mods=$(cut -d' ' -f1 /proc/modules 2>/dev/null | tr '\\n' ' ')"`,
+  `echo "blacklist=$(tr '\\n' ' ' < ${STATE}/blacklist 2>/dev/null)"`,
+  `for f in ${FLAGS.map((x) => x.file).join(' ')}; do [ -f ${MOD}/$f ] && echo "flag:$f=1"; done`,
+  `echo "end=1"`
 ].join('; ');
 
-const DIAG_CMD = [
+// 诊断分两段：快的部分先出，慢的 dmesg 后补
+const DIAG_FAST_CMD = [
   `echo "route=$(cat ${MOD}/route 2>/dev/null || echo auto)"`,
   `echo "kernel=$(uname -r)"`,
   `echo "model=$(getprop ro.product.model 2>/dev/null)"`,
   `echo`,
   `echo "[modules]"`,
-  `lsmod | grep -E '^(${MODULES.join('|')}) '`,
+  `grep -E '^(${MODULES.join('|')}) ' /proc/modules`,
   `echo`,
   `echo "[mali_nsfix]"`,
   ...['nshf_active', 'nshf_probe_ok', 'nshf_layout_valid', 'nshf_driver', 'nshf_seen', 'nshf_hits']
@@ -186,12 +214,20 @@ const DIAG_CMD = [
   `[ -e /dev/mali0 ] && echo mali0=yes || echo mali0=no`,
   `[ -e /dev/dri/renderD128 ] && echo renderD128=yes || echo renderD128=no`,
   `echo`,
-  `echo "[log tail]"`,
-  `tail -n 40 ${LOG} 2>/dev/null`,
+  `echo "[state]"`,
+  `echo "bootcount=$(cat /data/adb/droidspaces_lkm.bootcount 2>/dev/null || echo 0)"`,
+  `[ -f ${MOD}/disable ] && echo "disabled=yes" || echo "disabled=no"`,
+  `echo "blacklist=$(tr '\\n' ' ' < ${STATE}/blacklist 2>/dev/null)"`,
+  `echo "last_crash_module=$(cat ${STATE}/crash-module.txt 2>/dev/null)"`,
+  `[ -f ${STATE}/hang-report.txt ] && echo "hang_report=yes" || echo "hang_report=no"`,
+  `echo "flags=$(for f in ${FLAGS.map((x) => x.file).join(' ')}; do [ -f ${MOD}/$f ] && printf '%s ' $f; done)"`,
   `echo`,
-  `echo "[dmesg]"`,
-  `dmesg 2>/dev/null | grep -aE 'mali_nsfix|vkms|droid_lkm' | tail -n 20`
+  `echo "[log tail]"`,
+  `tail -n 40 ${LOG} 2>/dev/null`
 ].join('; ');
+
+const DIAG_SLOW_CMD =
+  `dmesg 2>/dev/null | grep -aE 'mali_nsfix|vkms|droid_lkm' | tail -n 20`;
 
 function parseKv(stdout) {
   const out = {};
@@ -213,10 +249,47 @@ function setNode(id, on, yesKey, noKey) {
   el.classList.toggle('ok', on);
 }
 
+function renderBlacklist(d) {
+  const list = String(d.blacklist || '').trim();
+  $('bl-warn').hidden = !list;
+  $('bl-text').textContent = list ? t('home.blacklist', { mods: list.split(/\s+/).join(', ') }) : '';
+}
+
+function renderFlags(d) {
+  FLAGS.forEach((f) => {
+    const sw = document.querySelector(`.switch[data-flag="${f.file}"]`);
+    if (sw) sw.setAttribute('aria-checked', d[`flag:${f.file}`] === '1' ? 'true' : 'false');
+  });
+}
+
+function buildFlags() {
+  const box = $('flag-rows');
+  box.replaceChildren(...FLAGS.map((f) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="k" data-i18n="${f.key}"></span>` +
+      `<button type="button" class="switch" role="switch" aria-checked="false" data-flag="${f.file}" data-i18n-attr="aria-label:${f.key}"><span class="switch-knob"></span></button>`;
+    row.querySelector('.switch').addEventListener('click', (e) => toggleFlag(f.file, e.currentTarget));
+    return row;
+  }));
+}
+
+async function toggleFlag(file, sw) {
+  const on = sw.getAttribute('aria-checked') !== 'true';
+  sw.setAttribute('aria-checked', on ? 'true' : 'false');      // 先乐观更新
+  const r = await sh(on ? `touch ${MOD}/${file}` : `rm -f ${MOD}/${file}`);
+  if (r.errno !== 0) sw.setAttribute('aria-checked', on ? 'false' : 'true');
+  toast(t(r.errno === 0 ? 'toast.optSaved' : 'toast.optFailed'));
+  refreshHome(true, true);
+}
+
 function renderHome(d) {
   lastHome = d;
   const route = ROUTES.includes(d.route) ? d.route : 'auto';
-  const anyLoaded = MODULES.some((m) => d[`mod:${m}`] === 'yes');
+  renderBlacklist(d);
+  renderFlags(d);
+  const loaded = new Set(String(d.mods || '').split(/\s+/).filter(Boolean));
+  const anyLoaded = MODULES.some((m) => loaded.has(m));
 
   $('routeNow').textContent = routeName(route);
   $('routeText').textContent = routeName(route);
@@ -231,11 +304,11 @@ function renderHome(d) {
   $('about-version').textContent = d.version || '…';
 
   setNode('node-mali0', d.mali0 === 'yes', 'state.yes', 'state.no');
-  setNode('node-kbase', d.kbase === 'yes', 'state.loaded', 'state.notLoaded');
+  setNode('node-kbase', loaded.has('mali_kbase'), 'state.loaded', 'state.notLoaded');
   setNode('node-render', d.render === 'yes', 'state.yes', 'state.no');
 
   $('module-list').innerHTML = MODULES.map((m) => {
-    const on = d[`mod:${m}`] === 'yes';
+    const on = loaded.has(m);
     return `<span class="chip ${on ? 'on' : 'off'}">${m}</span>`;
   }).join('');
 }
@@ -257,6 +330,7 @@ function buildLangSelect() {
   const btn = $('lang-select');
   const menu = $('lang-menu');
 
+  menu.removeAttribute('hidden');
   // 「跟随系统」置顶；选中后清掉语言缓存，按 navigator 重新解析
   const sysLabel = t('about.language.system') || 'System default';
   const items = [{ code: 'system', name: sysLabel }, ...LANGS];
@@ -266,6 +340,7 @@ function buildLangSelect() {
     b.className = 'md-menu-item';
     b.setAttribute('role', 'option');
     b.dataset.lang = l.code;
+    b.style.setProperty('--i', String(items.indexOf(l)));
     b.innerHTML = `<span>${l.name}</span><svg class="ic ic-check" aria-hidden="true"><use href="#i-check"/></svg>`;
     b.addEventListener('click', () => {
       closeLangMenu();
@@ -276,11 +351,11 @@ function buildLangSelect() {
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (menu.hidden) openLangMenu(); else closeLangMenu();
+    if (menu.classList.contains('is-open')) closeLangMenu(); else openLangMenu();
   });
   // 点外部 / Esc 关闭；不会和底栏、页面点击抢事件
   document.addEventListener('click', (e) => {
-    if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) closeLangMenu();
+    if (menu.classList.contains('is-open') && !menu.contains(e.target) && !btn.contains(e.target)) closeLangMenu();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeLangMenu();
@@ -290,12 +365,19 @@ function buildLangSelect() {
 }
 
 function openLangMenu() {
-  $('lang-menu').hidden = false;
+  const menu = $('lang-menu');
+  prefetchLocales();
+  menu.classList.add('is-open');
   $('lang-select').setAttribute('aria-expanded', 'true');
+  // 让当前语言出现在可视范围内
+  requestAnimationFrame(() => {
+    const cur = menu.querySelector('.md-menu-item.is-on');
+    if (cur) menu.scrollTop = Math.max(0, cur.offsetTop - menu.clientHeight / 2 + cur.offsetHeight / 2);
+  });
 }
 
 function closeLangMenu() {
-  $('lang-menu').hidden = true;
+  $('lang-menu').classList.remove('is-open');
   $('lang-select').setAttribute('aria-expanded', 'false');
 }
 
@@ -323,9 +405,30 @@ function pickUi() {
   return 'md3';
 }
 
-function applyUi(ui) {
+/* 主题切换：优先用 View Transitions 做整页交叉淡入；
+ * 不支持时给全页临时加颜色过渡类，结束后移除（避免常驻 transition 拖慢滚动） */
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+let themingTimer = 0;
+
+function smoothly(change) {
+  if (REDUCED.matches) { change(); return; }
+  if (typeof document.startViewTransition === 'function') {
+    try { document.startViewTransition(change); return; } catch { /* 回退 */ }
+  }
+  const root = document.documentElement;
+  root.classList.add('theming');
+  change();
+  clearTimeout(themingTimer);
+  themingTimer = setTimeout(() => root.classList.remove('theming'), 420);
+}
+
+function applyUi(ui, animate = false) {
+  if (animate) { smoothly(() => applyUi(ui, false)); return; }
   const name = UIS.includes(ui) ? ui : 'md3';
   document.documentElement.dataset.ui = name;
+  // 「莫奈取色」开关只对 MIUIx 有意义（Material 3 本来就跟随莫奈）
+  const row = $('monet-row');
+  if (row) row.hidden = name !== 'miuix';
   try { localStorage.setItem(UI_STORE, name); } catch { /* 忽略 */ }
   document.querySelectorAll('#ui-switch .seg-btn').forEach((b) => {
     b.classList.toggle('is-on', b.dataset.ui === name);
@@ -336,18 +439,116 @@ function applyUi(ui) {
   });
 }
 
-/* ======================= 数据刷新 ======================= */
+/* MIUIx 莫奈取色：开启后 MIUIx 配色改用管理器注入的 --md-sys-color-* */
+const MONET_STORE = 'dsl_monet';
 
-async function refreshHome() {
-  const r = await sh(HOME_CMD);
-  const d = parseKv(r.stdout);
-  renderHome(d);
-  markSelected(ROUTES.includes(d.route) ? d.route : 'auto');
+function monetOn() {
+  try { return localStorage.getItem(MONET_STORE) === '1'; } catch { return false; }
 }
 
-async function refreshDiag() {
-  const r = await sh(DIAG_CMD);
-  $('diag-out').textContent = r.stdout || r.stderr || t('diag.execFailed', { code: r.errno });
+function applyMonet(on, animate = false) {
+  if (animate) { smoothly(() => applyMonet(on, false)); return; }
+  document.documentElement.dataset.monet = on ? 'on' : 'off';
+  const sw = $('monet-switch');
+  if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+  try { localStorage.setItem(MONET_STORE, on ? '1' : '0'); } catch { /* 忽略 */ }
+  requestAnimationFrame(() => {
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.content = getComputedStyle(document.body).backgroundColor;
+  });
+}
+
+/* ======================= 数据刷新 ======================= */
+
+const HOME_CACHE = 'dsl_home_cache';
+const DIAG_CACHE = 'dsl_diag_cache';
+const FRESH_MS = 5000;
+
+function cacheGet(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function cacheSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* 忽略 */ }
+}
+
+/* 顶部细进度条：请求超过 400ms 才出现，避免闪烁 */
+let busyN = 0;
+let busyTimer = 0;
+function busy(on) {
+  const bar = $('busybar');
+  busyN = Math.max(0, busyN + (on ? 1 : -1));
+  if (busyN > 0) {
+    if (!busyTimer) busyTimer = setTimeout(() => bar.classList.add('is-on'), 400);
+  } else {
+    clearTimeout(busyTimer);
+    busyTimer = 0;
+    bar.classList.remove('is-on');
+  }
+}
+
+/* 首页错误横幅：保留上次的缓存内容，只在顶部提示 */
+let homeErr = null;
+function showHomeErr(kind) {
+  homeErr = kind;
+  const box = $('home-err');
+  box.hidden = !kind;
+  if (kind) $('home-err-text').textContent = t(kind === 'timeout' ? 'err.timeout' : 'err.bridge');
+}
+
+let homeBusy = null;
+let homeAt = 0;
+
+// force=false 时 5 秒内不重复执行 shell；同时只跑一次
+function refreshHome(force = true, silent = false) {
+  if (homeBusy) return homeBusy;
+  if (!force && Date.now() - homeAt < FRESH_MS) return Promise.resolve();
+  homeBusy = (async () => {
+    if (!silent) busy(true);
+    let r;
+    try { r = await sh(HOME_CMD); } finally { if (!silent) busy(false); }
+    const d = parseKv(r.stdout);
+    if (r.errno !== 0 && !r.stdout.trim()) {
+      showHomeErr(r.errno === 124 ? 'timeout' : 'bridge');
+      return;
+    }
+    showHomeErr(null);
+    if (d.kernel || d.route) {
+      homeAt = Date.now();
+      cacheSet(HOME_CACHE, d);
+    }
+    renderHome(d);
+    markSelected(ROUTES.includes(d.route) ? d.route : 'auto');
+  })().finally(() => { homeBusy = null; });
+  return homeBusy;
+}
+
+let diagBusy = null;
+let diagAt = 0;
+
+function refreshDiag(force = true) {
+  if (diagBusy) return diagBusy;
+  if (!force && Date.now() - diagAt < FRESH_MS) return Promise.resolve();
+  const out = $('diag-out');
+  if (!cacheGet(DIAG_CACHE)) out.textContent = t('diag.loading');
+  const cached = cacheGet(DIAG_CACHE);
+  // 先立刻显示上次结果（或占位），再后台刷新
+  if (cached) out.textContent = cached.fast + '\n\n[dmesg]\n' + cached.slow;
+  diagBusy = (async () => {
+    busy(true);
+    const fastP = sh(DIAG_FAST_CMD).finally(() => busy(false));
+    const slowP = sh(DIAG_SLOW_CMD, 20000);
+    const f = await fastP;
+    const fast = f.stdout || f.stderr || t('diag.execFailed', { code: f.errno });
+    if (currentView === 'view-diag' || !cached) {
+      out.textContent = fast + '\n\n[dmesg]\n' + (cached ? cached.slow : '…');
+    }
+    const s = await slowP;
+    const slow = s.stdout.trim();
+    out.textContent = fast + '\n\n[dmesg]\n' + slow;
+    diagAt = Date.now();
+    cacheSet(DIAG_CACHE, { fast, slow });
+  })().finally(() => { diagBusy = null; });
+  return diagBusy;
 }
 
 /* ======================= 交互 ======================= */
@@ -365,6 +566,11 @@ async function applyRoute() {
   if (!ROUTES.includes(selectedRoute)) return;
   const r = await sh(`mkdir -p ${MOD} && printf '%s\\n' '${selectedRoute}' > ${MOD}/route`);
   toast(t(r.errno === 0 ? 'toast.saved' : 'toast.saveFailed'));
+  if (r.errno === 0) {
+    const rb = $('reboot-route');
+    rb.classList.add('pulse');
+    setTimeout(() => rb.classList.remove('pulse'), 3000);
+  }
   await refreshHome();
 }
 
@@ -384,6 +590,41 @@ async function copyDiag() {
   try { ok = document.execCommand('copy'); } catch { /* 忽略 */ }
   ta.remove();
   toast(t(ok ? 'toast.copied' : 'toast.copyFailed'));
+}
+
+/* 重启：第一次点击进入「再点一次确认」，4 秒内再点才执行 */
+const armTimers = new WeakMap();
+
+function rebootLabel(btn) { return btn.querySelector('[data-i18n]'); }
+
+function disarmReboot(btn) {
+  clearTimeout(armTimers.get(btn));
+  btn.classList.remove('is-armed');
+  const lb = rebootLabel(btn);
+  if (lb) lb.textContent = t(lb.dataset.i18n);
+}
+
+// 通用「再点一次确认」：第一次点击只进入确认态
+function confirmTap(btn) {
+  if (btn.classList.contains('is-armed')) { disarmReboot(btn); return true; }
+  btn.classList.add('is-armed');
+  rebootLabel(btn).textContent = t('action.rebootConfirm');
+  armTimers.set(btn, setTimeout(() => disarmReboot(btn), 4000));
+  return false;
+}
+
+async function clearBlacklist(btn) {
+  if (!confirmTap(btn)) return;
+  const r = await sh(`rm -f ${STATE}/blacklist ${STATE}/crash-module.txt`);
+  toast(t(r.errno === 0 ? 'toast.cleared' : 'toast.optFailed'));
+  await refreshHome(true, true);
+}
+
+async function onReboot(btn) {
+  if (!confirmTap(btn)) return;
+  const r = await sh('svc power reboot || reboot', 6000);
+  // 真正重启时命令不会返回，超时(124)视为成功
+  if (r.errno !== 0 && r.errno !== 124) toast(t('action.rebootFailed'));
 }
 
 async function openLink(url) {
@@ -408,33 +649,37 @@ function switchView(target) {
   $('appbar-title').textContent = t(`tab.${target.replace('view-', '')}`);
   $('scroller').scrollTop = 0;
   syncAppbar();
-  if (target === 'view-diag') refreshDiag();
-  if (target === 'view-home') refreshHome();
+  if (target === 'view-diag') refreshDiag(false);
+  if (target === 'view-home') refreshHome(false);
 }
 
 // 切换语言只重绘文本，不重新执行 shell 命令
 async function changeLang(code) {
   if (code === lang) return;
-  await setLang(code);
+  const fade = $('scroller');
+  const bar = $('tabbar');
+  const quick = !REDUCED.matches;
+  // 先淡出 → 换文案（语言包已预取，几乎瞬间）→ 再淡入，避免文字闪跳
+  if (quick) { fade.classList.add('swap'); bar.classList.add('swap'); }
+  await Promise.all([setLang(code), new Promise((r) => setTimeout(r, quick ? 110 : 0))]);
   applyI18n();
   markLang();
   markSelected(selectedRoute);
   if (lastHome) renderHome(lastHome);
+  showHomeErr(homeErr);
   $('appbar-title').textContent = t(`tab.${currentView.replace('view-', '')}`);
+  requestAnimationFrame(() => { fade.classList.remove('swap'); bar.classList.remove('swap'); });
 }
 
 /* ======================= 平台判定 =======================
  * 非 MTK（含高通等）隐藏「切换路线」底栏：路线只对 Mali 有意义，
  * 装到别的平台只会让人误以为可以切换。
  */
+const MTK_RE = /mtk|mediatek|(^|[^a-z])mt[0-9]/;
 async function platformIsMtk() {
-  const r = await sh([
-    'getprop ro.board.platform',
-    'getprop ro.soc.model',
-    'getprop ro.hardware'
-  ].join('; '));
+  const r = await sh('getprop ro.board.platform; getprop ro.soc.model; getprop ro.hardware');
   const s = String(r.stdout || '').toLowerCase();
-  return /mtk|mediatek|(^|[^a-z])mt[0-9]/.test(s);
+  return MTK_RE.test(s);
 }
 
 function hideRouteTabIfNotMtk() {
@@ -446,12 +691,15 @@ function hideRouteTabIfNotMtk() {
 
 (async function boot() {
   await setLang(pickLang());
+  buildFlags();
   applyI18n();
   buildLangSelect();
-  if (!(await platformIsMtk())) hideRouteTabIfNotMtk();
   document.querySelectorAll('#ui-switch .seg-btn').forEach((b) => {
-    b.addEventListener('click', () => applyUi(b.dataset.ui));
+    b.addEventListener('click', () => { if (b.dataset.ui !== document.documentElement.dataset.ui) applyUi(b.dataset.ui, true); });
   });
+  const monetSw = $('monet-switch');
+  monetSw.addEventListener('click', () => applyMonet(!monetOn(), true));
+  applyMonet(monetOn());
   applyUi(pickUi());
 
   document.querySelectorAll('.tab').forEach((el) => {
@@ -463,10 +711,41 @@ function hideRouteTabIfNotMtk() {
   $('scroller').addEventListener('scroll', syncAppbar, { passive: true });
   $('apply-route').addEventListener('click', applyRoute);
   $('copy-diag').addEventListener('click', copyDiag);
+  $('reboot-route').addEventListener('click', () => onReboot($('reboot-route')));
+  $('reboot-about').addEventListener('click', () => onReboot($('reboot-about')));
+  $('bl-clear').addEventListener('click', () => clearBlacklist($('bl-clear')));
+  $('home-retry').addEventListener('click', () => refreshHome(true));
   $('pack5').addEventListener('click', () => openLink(PACK5));
   $('pack6').addEventListener('click', () => openLink(PACK6));
 
   $('appbar-title').textContent = t('tab.home');
-  await refreshHome();
+
+  // 先用缓存秒开，不等 shell
+  const cachedHome = cacheGet(HOME_CACHE);
+  if (cachedHome) {
+    renderHome(cachedHome);
+    markSelected(ROUTES.includes(cachedHome.route) ? cachedHome.route : 'auto');
+  }
   document.body.classList.remove('booting');
+
+  // 平台判定、首页数据并行；判定结果缓存，下次直接决定是否显示「路线」页签
+  const mtkCached = cacheGet('dsl_is_mtk');
+  if (mtkCached === false) hideRouteTabIfNotMtk();
+  platformIsMtk().then((mtk) => {
+    cacheSet('dsl_is_mtk', mtk);
+    if (!mtk) hideRouteTabIfNotMtk();
+  });
+  // 首页在前台时每 8 秒静默刷新；切回应用立即刷新一次
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && currentView === 'view-home') refreshHome(true, true);
+  }, 8000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (currentView === 'view-home') refreshHome(false, true);
+      else if (currentView === 'view-diag') refreshDiag(false);
+    }
+  });
+  await refreshHome();
+  // 空闲时预取诊断，之后切到诊断页即可看到内容
+  setTimeout(() => refreshDiag(true), 300);
 })();

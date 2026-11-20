@@ -50,5 +50,14 @@
   "toast.saveFailed": "Gagal menyimpan rute",
   "toast.copied": "Disalin",
   "toast.copyFailed": "Gagal menyalin",
-  "toast.openFailed": "Tidak dapat membuka tautan"
+  "toast.openFailed": "Tidak dapat membuka tautan",
+  "about.monet": "Aktifkan Monet untuk MIUIx",
+  "err.bridge": "Tidak dapat terhubung ke manajer root. Buka halaman ini dari KernelSU / APatch / Magisk.",
+  "err.timeout": "Perintah kehabisan waktu. Perangkat mungkin sedang sibuk.",
+  "err.retry": "Coba lagi",
+  "action.reboot": "Reboot sekarang",
+  "action.rebootConfirm": "Ketuk lagi untuk konfirmasi",
+  "action.rebootFailed": "Reboot gagal",
+  "about.actions": "Tindakan",
+  "diag.loading": "Memuat…"
 }

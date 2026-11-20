@@ -50,5 +50,14 @@
   "toast.saveFailed": "Impossibile salvare il percorso",
   "toast.copied": "Copiato",
   "toast.copyFailed": "Copia non riuscita",
-  "toast.openFailed": "Impossibile aprire il link"
+  "toast.openFailed": "Impossibile aprire il link",
+  "about.monet": "Attiva Monet per MIUIx",
+  "err.bridge": "Impossibile contattare il gestore root. Apri questa pagina da KernelSU / APatch / Magisk.",
+  "err.timeout": "Comando scaduto. Il dispositivo potrebbe essere occupato.",
+  "err.retry": "Riprova",
+  "action.reboot": "Riavvia ora",
+  "action.rebootConfirm": "Tocca di nuovo per confermare",
+  "action.rebootFailed": "Riavvio non riuscito",
+  "about.actions": "Azioni",
+  "diag.loading": "Caricamento…"
 }

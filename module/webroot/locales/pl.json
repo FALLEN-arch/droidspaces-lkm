@@ -50,5 +50,14 @@
   "toast.saveFailed": "Nie udało się zapisać trasy",
   "toast.copied": "Skopiowano",
   "toast.copyFailed": "Nie udało się skopiować",
-  "toast.openFailed": "Nie można otworzyć linku"
+  "toast.openFailed": "Nie można otworzyć linku",
+  "about.monet": "Włącz Monet dla MIUIx",
+  "err.bridge": "Nie można połączyć się z menedżerem root. Otwórz tę stronę z KernelSU / APatch / Magisk.",
+  "err.timeout": "Polecenie przekroczyło limit czasu. Urządzenie może być zajęte.",
+  "err.retry": "Ponów",
+  "action.reboot": "Uruchom ponownie teraz",
+  "action.rebootConfirm": "Dotknij ponownie, aby potwierdzić",
+  "action.rebootFailed": "Nie udało się uruchomić ponownie",
+  "about.actions": "Akcje",
+  "diag.loading": "Ładowanie…"
 }

@@ -97,6 +97,16 @@ if [ -n "$pkg_android" ] && [ "$pkg_all_same" = 1 ]; then
         abort "  ${M_INSTALL_ABORTED}"
     fi
 fi
+# 升级 / 重装：上一版留下的黑名单与崩溃记录属于旧构建。
+# 状态目录在模块目录之外，不清的话修好的新版本也会被「上次卡死」永久拦住。
+# 保护机制不受影响：新版本若再卡死，开机面包屑会重新把它拉黑。
+# hang-report / pstore 现场保留，作为排查证据。
+_SD=/data/adb/droidspaces_lkm.d
+if [ -f "$_SD/blacklist" ] || [ -f "$_SD/crash-module.txt" ] || [ -f "$_SD/loading" ]; then
+    ui_print "- Cleared stale boot-failure state (blacklist) from the previous version"
+fi
+rm -f "$_SD/blacklist" "$_SD/crash-module.txt" "$_SD/loading" /data/adb/droidspaces_lkm.bootcount 2>/dev/null
+
 ui_print " "
 ui_print "- ${M_RUNTIME_LOG}: /data/adb/droidspaces_lkm.log"
 ui_print "- ${M_HANG_REPORT}: /data/adb/droidspaces_lkm.d/hang-report.txt"

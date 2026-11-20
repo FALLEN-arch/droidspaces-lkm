@@ -50,5 +50,14 @@
   "toast.saveFailed": "บันทึกเส้นทางไม่สำเร็จ",
   "toast.copied": "คัดลอกแล้ว",
   "toast.copyFailed": "คัดลอกไม่สำเร็จ",
-  "toast.openFailed": "ไม่สามารถเปิดลิงก์ได้"
+  "toast.openFailed": "ไม่สามารถเปิดลิงก์ได้",
+  "about.monet": "เปิดใช้ Monet สำหรับ MIUIx",
+  "err.bridge": "เชื่อมต่อกับตัวจัดการ root ไม่ได้ โปรดเปิดหน้านี้จาก KernelSU / APatch / Magisk",
+  "err.timeout": "คำสั่งหมดเวลา เครื่องอาจกำลังทำงานหนัก",
+  "err.retry": "ลองอีกครั้ง",
+  "action.reboot": "รีบูตเดี๋ยวนี้",
+  "action.rebootConfirm": "แตะอีกครั้งเพื่อยืนยัน",
+  "action.rebootFailed": "รีบูตไม่สำเร็จ",
+  "about.actions": "การดำเนินการ",
+  "diag.loading": "กำลังโหลด…"
 }

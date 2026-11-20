@@ -50,5 +50,14 @@
   "toast.saveFailed": "Rota kaydedilemedi",
   "toast.copied": "Kopyalandı",
   "toast.copyFailed": "Kopyalanamadı",
-  "toast.openFailed": "Bağlantı açılamadı"
+  "toast.openFailed": "Bağlantı açılamadı",
+  "about.monet": "MIUIx için Monet'i etkinleştir",
+  "err.bridge": "Root yöneticisine ulaşılamıyor. Bu sayfayı KernelSU / APatch / Magisk üzerinden açın.",
+  "err.timeout": "Komut zaman aşımına uğradı. Cihaz meşgul olabilir.",
+  "err.retry": "Yeniden dene",
+  "action.reboot": "Şimdi yeniden başlat",
+  "action.rebootConfirm": "Onaylamak için tekrar dokunun",
+  "action.rebootFailed": "Yeniden başlatma başarısız",
+  "about.actions": "Eylemler",
+  "diag.loading": "Yükleniyor…"
 }
