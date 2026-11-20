@@ -11,11 +11,12 @@
   :root { --inset-top: 0px; --inset-bottom: 0px; }
   body { max-width: 430px; margin: 0 auto; }
 
-  /* Boot error overlay */
+  /* Boot error overlay — visible even while body.booting hides the rest */
   #boot-error {
     display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
     z-index: 9999; background: #ff4d4f; color: #fff; padding: 16px 24px;
     border-radius: 10px; font: 14px/1.5 system-ui; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    visibility: visible !important;
   }
 </style>
 </head>
@@ -225,10 +226,14 @@ window.addEventListener('unhandledrejection', (e) => {
 setTimeout(() => {
   if (document.body.classList.contains('booting')) {
     bootError.style.display = 'block';
-    bootError.textContent = 'Boot stalled after 5s — check console for errors';
+    bootError.innerHTML = 'Boot stalled after 2s — <button id="force-show" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;margin-left:8px;">Force show UI</button> — check console for errors';
+    document.getElementById('force-show')?.onclick = () => {
+      document.body.classList.remove('booting');
+      bootError.style.display = 'none';
+    };
     document.body.classList.remove('booting');
   }
-}, 5000);
+}, 2000);
 </script>
 
 <!-- Mock KSU API: loads before index.js so window.ksu exists when sh() runs -->
