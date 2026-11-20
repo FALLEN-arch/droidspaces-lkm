@@ -130,9 +130,11 @@
   // ---------- install mock ksu API ----------
   window.ksu = {
     exec(cmd, _payload, callbackName) {
+      console.log('[mock ksu] exec:', cmd.slice(0, 80));
       // simulate async shell delay
       setTimeout(() => {
         const result = run(cmd);
+        console.log('[mock ksu] result:', result.errno, result.stdout.slice(0, 100));
         if (typeof window[callbackName] === 'function') {
           window[callbackName](result.errno, result.stdout, result.stderr);
         }

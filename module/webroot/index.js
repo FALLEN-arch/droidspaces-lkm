@@ -722,10 +722,15 @@ function hideRouteTabIfNotMtk() {
 
 (async function boot() {
   try {
+    console.log('[boot] start');
     await setLang(pickLang());
+    console.log('[boot] lang set');
     buildFlags();
+    console.log('[boot] flags built');
     applyI18n();
+    console.log('[boot] i18n applied');
     buildLangSelect();
+    console.log('[boot] lang select built');
   const on = (id, type, fn) => { const el = $(id); if (el) el.addEventListener(type, fn); else console.warn(`[boot] ${id} not found, skipping ${type}`); };
 
   document.querySelectorAll('#ui-switch .seg-btn').forEach((b) => {
@@ -756,6 +761,7 @@ function hideRouteTabIfNotMtk() {
 
   const ab = $('appbar-title');
   if (ab) ab.textContent = t('tab.home');
+  console.log('[boot] listeners attached');
 
   // 先用缓存秒开，不等 shell；没缓存才跑一次壳命令
   const cachedHome = cacheGet(HOME_CACHE);
@@ -765,6 +771,7 @@ function hideRouteTabIfNotMtk() {
   } else {
     await refreshHome();
   }
+  console.log('[boot] home rendered, removing booting class');
   document.body.classList.remove('booting');
 
   // 平台判定、判定结果缓存，下次直接决定是否显示「路线」页签
@@ -794,5 +801,7 @@ function hideRouteTabIfNotMtk() {
       el.textContent = `Boot failed: ${e.message}`;
     }
     document.body.classList.remove('booting');
+  }
+  console.log('[boot] IIFE reached end');
   }
 })();
