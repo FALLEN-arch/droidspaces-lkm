@@ -233,10 +233,12 @@ h1, h2, p { margin: 0; }
   display: inline-flex; align-items: center; justify-content: center;
   min-height: 48px; padding: 0 24px; border-radius: 24px;
   font-size: 14px; font-weight: 600; text-align: center;
-  background: var(--c-primary-c); color: var(--c-on-primary-c);
+  background: var(--c-primary); color: var(--c-on-primary);
   transition: transform .15s, opacity .15s;
 }
 .btn:active { transform: scale(.97); opacity: .9; }
+/* MIUIx 保持现有的容器色按钮，不受 M3 填充色变动影响 */
+html[data-ui="miuix"] .btn { background: var(--c-primary-c); color: var(--c-on-primary-c); }
 .btn-block { width: 100%; margin-top: 14px; }
 
 .seg { display: inline-flex; border-radius: 999px; padding: 3px; background: var(--c-surface-hh); }
@@ -322,7 +324,7 @@ h1, h2, p { margin: 0; }
 }
 .md-select:hover { background: var(--c-surface-hi); }
 .md-select:active { background: var(--c-surface-hh); }
-.md-select:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+.md-select:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 0; }
 .md-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-select-arrow {
   width: 18px; height: 18px; flex: none; color: var(--c-text-var);
