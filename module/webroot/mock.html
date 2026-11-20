@@ -23,35 +23,6 @@
 
 <div id="boot-error"></div>
 
-<script>
-// Safety net: unhide page after 5s even if boot stalls, and surface JS errors
-const bootError = document.getElementById('boot-error');
-window.onerror = (msg, url, line) => {
-  bootError.style.display = 'block';
-  bootError.textContent = `JS error: ${msg}\n${url}:${line}`;
-  document.body.classList.remove('booting');
-  return true;
-};
-window.addEventListener('unhandledrejection', (e) => {
-  bootError.style.display = 'block';
-  bootError.textContent = `Unhandled promise rejection: ${e.reason}`;
-  document.body.classList.remove('booting');
-});
-setTimeout(() => {
-  if (document.body.classList.contains('booting')) {
-    bootError.style.display = 'block';
-    bootError.textContent = 'Boot stalled after 5s — check console for errors';
-    document.body.classList.remove('booting');
-  }
-}, 5000);
-</script>
-
-<!-- Mock KSU API: loads before index.js so window.ksu exists when sh() runs -->
-<script src="mock-ksu.js"></script>
-
-<!-- Actual WebUI module script (unchanged) -->
-<script src="index.js" type="module"></script>
-
 <!-- WebUI body (copied from index.html structure) -->
 <div class="shell">
   <div class="busybar" id="busybar" aria-hidden="true"></div>
@@ -236,6 +207,35 @@ setTimeout(() => {
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
   </defs>
 </svg>
+
+<!-- Safety net: unhide page after 5s even if boot stalls, and surface JS errors -->
+<script>
+const bootError = document.getElementById('boot-error');
+window.onerror = (msg, url, line) => {
+  bootError.style.display = 'block';
+  bootError.textContent = `JS error: ${msg}\n${url}:${line}`;
+  document.body.classList.remove('booting');
+  return true;
+};
+window.addEventListener('unhandledrejection', (e) => {
+  bootError.style.display = 'block';
+  bootError.textContent = `Unhandled promise rejection: ${e.reason}`;
+  document.body.classList.remove('booting');
+});
+setTimeout(() => {
+  if (document.body.classList.contains('booting')) {
+    bootError.style.display = 'block';
+    bootError.textContent = 'Boot stalled after 5s — check console for errors';
+    document.body.classList.remove('booting');
+  }
+}, 5000);
+</script>
+
+<!-- Mock KSU API: loads before index.js so window.ksu exists when sh() runs -->
+<script src="mock-ksu.js"></script>
+
+<!-- Actual WebUI module script (unchanged) -->
+<script src="index.js" type="module"></script>
 
 </body>
 </html>
