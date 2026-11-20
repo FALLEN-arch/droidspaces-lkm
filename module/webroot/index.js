@@ -726,11 +726,14 @@ function hideRouteTabIfNotMtk() {
     buildFlags();
     applyI18n();
     buildLangSelect();
+  const on = (id, type, fn) => { const el = $(id); if (el) el.addEventListener(type, fn); else console.warn(`[boot] ${id} not found, skipping ${type}`); };
+
   document.querySelectorAll('#ui-switch .seg-btn').forEach((b) => {
     b.addEventListener('click', () => { if (b.dataset.ui !== document.documentElement.dataset.ui) applyUi(b.dataset.ui, true); });
   });
   const monetSw = $('monet-switch');
-  monetSw.addEventListener('click', () => applyMonet(!monetOn(), true));
+  if (monetSw) monetSw.addEventListener('click', () => applyMonet(!monetOn(), true));
+  else console.warn('[boot] monet-switch not found, skipping click');
   applyMonet(monetOn());
   applyUi(pickUi());
 
@@ -740,18 +743,19 @@ function hideRouteTabIfNotMtk() {
   document.querySelectorAll('.opt').forEach((el) => {
     el.addEventListener('click', () => markSelected(el.dataset.route));
   });
-  $('scroller').addEventListener('scroll', syncAppbar, { passive: true });
-  $('apply-route').addEventListener('click', applyRoute);
-  $('copy-diag').addEventListener('click', copyDiag);
-  $('reboot-route').addEventListener('click', () => onReboot($('reboot-route')));
-  $('reboot-about').addEventListener('click', () => onReboot($('reboot-about')));
-  $('bl-clear').addEventListener('click', () => clearBlacklist($('bl-clear')));
-  $('home-retry').addEventListener('click', () => refreshHome(true));
-  $('pack5').addEventListener('click', () => openLink(PACK5));
-  $('pack6').addEventListener('click', () => openLink(PACK6));
+  on('scroller', 'scroll', syncAppbar);
+  on('apply-route', 'click', applyRoute);
+  on('copy-diag', 'click', copyDiag);
+  on('reboot-route', 'click', () => onReboot($('reboot-route')));
+  on('reboot-about', 'click', () => onReboot($('reboot-about')));
+  on('bl-clear', 'click', () => clearBlacklist($('bl-clear')));
+  on('home-retry', 'click', () => refreshHome(true));
+  on('pack5', 'click', () => openLink(PACK5));
+  on('pack6', 'click', () => openLink(PACK6));
   initRipples();
 
-  $('appbar-title').textContent = t('tab.home');
+  const ab = $('appbar-title');
+  if (ab) ab.textContent = t('tab.home');
 
   // 先用缓存秒开，不等 shell；没缓存才跑一次壳命令
   const cachedHome = cacheGet(HOME_CACHE);
