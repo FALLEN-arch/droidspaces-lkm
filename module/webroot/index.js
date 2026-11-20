@@ -458,6 +458,35 @@ function applyMonet(on, animate = false) {
   });
 }
 
+/* 波纹点击反馈：在可交互元素上产生 Material 风格的波纹 */
+function ripple(el, e) {
+  if (REDUCED.matches) return;
+  const rect = el.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 2;
+  const x = e.clientX - rect.left - size / 2;
+  const y = e.clientY - rect.top - size / 2;
+  const node = document.createElement('span');
+  node.className = 'ripple';
+  node.style.width = node.style.height = size + 'px';
+  node.style.left = x + 'px';
+  node.style.top = y + 'px';
+  const isLight = getComputedStyle(document.body).color === 'rgb(255, 255, 255)'
+    || getComputedStyle(document.body).color === 'rgb(230, 224, 233)';
+  node.style.background = isLight ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.32)';
+  el.appendChild(node);
+  setTimeout(() => node.remove(), 600);
+}
+
+/* 给可交互元素加 ripple-element 类，统一在 document 上监听 mousedown */
+function initRipples() {
+  const sel = '.btn, .opt, .seg-btn, .switch, .tab, .link-row, .banner-btn, .md-menu-item, .chip';
+  document.querySelectorAll(sel).forEach((el) => el.classList.add('ripple-element'));
+  document.addEventListener('mousedown', (e) => {
+    const target = e.target.closest('.ripple-element');
+    if (target) ripple(target, e);
+  }, { passive: true });
+}
+
 /* ======================= 数据刷新 ======================= */
 
 const HOME_CACHE = 'dsl_home_cache';
@@ -717,6 +746,7 @@ function hideRouteTabIfNotMtk() {
   $('home-retry').addEventListener('click', () => refreshHome(true));
   $('pack5').addEventListener('click', () => openLink(PACK5));
   $('pack6').addEventListener('click', () => openLink(PACK6));
+  initRipples();
 
   $('appbar-title').textContent = t('tab.home');
 
