@@ -26,6 +26,13 @@ const FLAGS = [
 
 const $ = (id) => document.getElementById(id);
 
+/* Boot progress indicator — mock.html defines window.bootLog; real module
+ * context doesn't, so this degrades gracefully to console.log only. */
+function bootLog(msg) {
+  if (typeof window.bootLog === 'function') window.bootLog(msg);
+  console.log('[boot]', msg);
+}
+
 /* ======================= shell 桥接 ======================= */
 
 let cbSeq = 0;
@@ -722,15 +729,15 @@ function hideRouteTabIfNotMtk() {
 
 (async function boot() {
   try {
-    console.log('[boot] start');
+    bootLog('start');
     await setLang(pickLang());
-    console.log('[boot] lang set');
+    bootLog('lang set');
     buildFlags();
-    console.log('[boot] flags built');
+    bootLog('flags built');
     applyI18n();
-    console.log('[boot] i18n applied');
+    bootLog('i18n applied');
     buildLangSelect();
-    console.log('[boot] lang select built');
+    bootLog('lang select built');
   const on = (id, type, fn) => { const el = $(id); if (el) el.addEventListener(type, fn); else console.warn(`[boot] ${id} not found, skipping ${type}`); };
 
   document.querySelectorAll('#ui-switch .seg-btn').forEach((b) => {
@@ -761,7 +768,7 @@ function hideRouteTabIfNotMtk() {
 
   const ab = $('appbar-title');
   if (ab) ab.textContent = t('tab.home');
-  console.log('[boot] listeners attached');
+  bootLog('listeners attached');
 
   // 先用缓存秒开，不等 shell；没缓存才跑一次壳命令
   const cachedHome = cacheGet(HOME_CACHE);
@@ -771,7 +778,7 @@ function hideRouteTabIfNotMtk() {
   } else {
     await refreshHome();
   }
-  console.log('[boot] home rendered, removing booting class');
+  bootLog('home rendered');
   document.body.classList.remove('booting');
 
   // 平台判定、判定结果缓存，下次直接决定是否显示「路线」页签
@@ -793,14 +800,10 @@ function hideRouteTabIfNotMtk() {
   });
   // 空闲时预取诊断，之后切到诊断页即可看到内容；尊重缓存，不强制重跑壳命令
   setTimeout(() => refreshDiag(false), 300);
+  bootLog('done');
   } catch (e) {
+    bootLog(`failed: ${e.message}`);
     console.error('[boot] failed:', e);
-    const el = document.getElementById('boot-error');
-    if (el) {
-      el.style.display = 'block';
-      el.textContent = `Boot failed: ${e.message}`;
-    }
     document.body.classList.remove('booting');
   }
-  console.log('[boot] IIFE reached end');
 })();
