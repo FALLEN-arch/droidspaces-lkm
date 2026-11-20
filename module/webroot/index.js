@@ -264,6 +264,7 @@ function renderFlags(d) {
 
 function buildFlags() {
   const box = $('flag-rows');
+  if (!box) { console.warn('[buildFlags] flag-rows not found'); return; }
   box.replaceChildren(...FLAGS.map((f) => {
     const row = document.createElement('div');
     row.className = 'row';
@@ -329,6 +330,7 @@ function markSelected(route) {
 function buildLangSelect() {
   const btn = $('lang-select');
   const menu = $('lang-menu');
+  if (!menu) { console.warn('[buildLangSelect] lang-menu not found'); return; }
 
   menu.removeAttribute('hidden');
   // 「跟随系统」置顶；选中后清掉语言缓存，按 navigator 重新解析
@@ -719,10 +721,11 @@ function hideRouteTabIfNotMtk() {
 /* ======================= 启动 ======================= */
 
 (async function boot() {
-  await setLang(pickLang());
-  buildFlags();
-  applyI18n();
-  buildLangSelect();
+  try {
+    await setLang(pickLang());
+    buildFlags();
+    applyI18n();
+    buildLangSelect();
   document.querySelectorAll('#ui-switch .seg-btn').forEach((b) => {
     b.addEventListener('click', () => { if (b.dataset.ui !== document.documentElement.dataset.ui) applyUi(b.dataset.ui, true); });
   });
@@ -779,4 +782,13 @@ function hideRouteTabIfNotMtk() {
   });
   // 空闲时预取诊断，之后切到诊断页即可看到内容；尊重缓存，不强制重跑壳命令
   setTimeout(() => refreshDiag(false), 300);
+  } catch (e) {
+    console.error('[boot] failed:', e);
+    const el = document.getElementById('boot-error');
+    if (el) {
+      el.style.display = 'block';
+      el.textContent = `Boot failed: ${e.message}`;
+    }
+    document.body.classList.remove('booting');
+  }
 })();
