@@ -237,9 +237,16 @@ h1, h2, p { margin: 0; }
   transition: transform .15s, opacity .15s;
 }
 .btn:active { transform: scale(.97); opacity: .9; }
-/* MIUIx 保持现有的容器色按钮，不受 M3 填充色变动影响 */
-html[data-ui="miuix"] .btn { background: var(--c-primary-c); color: var(--c-on-primary-c); }
 .btn-block { width: 100%; margin-top: 14px; }
+
+/* 键盘聚焦：仅在 Tab/键盘导航时显示，点击不残留；outline-offset 0 避免光晕 */
+.seg-btn:focus-visible,
+.switch:focus-visible,
+.opt:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 0;
+}
 
 .seg { display: inline-flex; border-radius: 999px; padding: 3px; background: var(--c-surface-hh); }
 .seg-btn {
