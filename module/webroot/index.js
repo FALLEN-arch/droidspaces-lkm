@@ -803,5 +803,4 @@ function hideRouteTabIfNotMtk() {
     document.body.classList.remove('booting');
   }
   console.log('[boot] IIFE reached end');
-  }
 })();
