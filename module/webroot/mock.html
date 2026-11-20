@@ -11,7 +11,7 @@
   :root { --inset-top: 0px; --inset-bottom: 0px; }
   body { max-width: 430px; margin: 0 auto; }
 
-  /* Safety net: if boot stalls, remove booting after 5s and show error */
+  /* Boot error overlay */
   #boot-error {
     display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
     z-index: 9999; background: #ff4d4f; color: #fff; padding: 16px 24px;
@@ -51,6 +51,191 @@ setTimeout(() => {
 
 <!-- Actual WebUI module script (unchanged) -->
 <script src="index.js" type="module"></script>
+
+<!-- WebUI body (copied from index.html structure) -->
+<div class="shell">
+  <div class="busybar" id="busybar" aria-hidden="true"></div>
+  <header class="appbar" id="appbar" aria-hidden="true">
+    <span class="appbar-title" id="appbar-title">Droidspaces LKM</span>
+  </header>
+
+  <main class="scroller" id="scroller">
+
+    <!-- 主页 -->
+    <section id="view-home" class="page is-active">
+      <h1 class="page-title">Droidspaces LKM</h1>
+
+      <div class="banner" id="home-err" role="alert" hidden>
+        <span id="home-err-text"></span>
+        <button type="button" class="banner-btn" id="home-retry">Retry</button>
+      </div>
+
+      <div class="banner banner-warn" id="bl-warn" role="status" hidden>
+        <span id="bl-text"></span>
+        <button type="button" class="banner-btn" id="bl-clear">Clear blacklist</button>
+      </div>
+
+      <div class="hero" id="hero">
+        <svg class="ic ic-hero"><use id="hero-icon" href="#i-ok"/></svg>
+        <div class="hero-text">
+          <div class="hero-row">
+            <h2 id="status-title">…</h2>
+            <span id="routeNow" class="badge">…</span>
+          </div>
+          <div id="status-indicator" class="hero-sub">…</div>
+        </div>
+      </div>
+
+      <div class="group-label">Loaded modules</div>
+      <div class="panel">
+        <div id="module-list" class="chips"><span class="chip off">…</span></div>
+      </div>
+
+      <div class="group-label">Key nodes</div>
+      <div class="panel panel-rows">
+        <div class="row"><span class="k">/dev/mali0</span><span class="v" id="node-mali0">…</span></div>
+        <div class="row"><span class="k">mali_kbase</span><span class="v" id="node-kbase">…</span></div>
+        <div class="row"><span class="k">/dev/dri/renderD128</span><span class="v" id="node-render">…</span></div>
+      </div>
+
+      <div class="group-label">Device</div>
+      <div class="panel panel-rows">
+        <div class="row"><span class="k">Kernel</span><span class="v" id="kernel-version">…</span></div>
+        <div class="row"><span class="k">Model</span><span class="v" id="device-model">…</span></div>
+        <div class="row"><span class="k">Route</span><span class="v" id="routeText">…</span></div>
+        <div class="row"><span class="k">Log</span><span class="v">/data/adb/droidspaces_lkm.log</span></div>
+      </div>
+    </section>
+
+    <!-- 切换路线 -->
+    <section id="view-route" class="page">
+      <h1 class="page-title">Display route</h1>
+      <p class="page-desc">Choose the rendering path on Mali. Takes effect after reboot.</p>
+
+      <div class="stack" id="route-options">
+        <button type="button" class="opt" data-route="auto">
+          <span class="opt-icon"><svg class="ic"><use href="#i-auto"/></svg></span>
+          <span class="opt-text"><b>Auto (current behaviour)</b><small>Load mali_nsfix automatically; load vkms only with enable_vkms.</small></span>
+          <span class="chip off" data-chip>—</span>
+        </button>
+        <button type="button" class="opt" data-route="anland6">
+          <span class="opt-icon"><svg class="ic"><use href="#i-six"/></svg></span>
+          <span class="opt-text"><b>Anland 6.x</b><small>/dev/mali0 + mali_nsfix; never loads vkms.</small></span>
+          <span class="chip off" data-chip>—</span>
+        </button>
+        <button type="button" class="opt" data-route="desktop5">
+          <span class="opt-icon"><svg class="ic"><use href="#i-desk"/></svg></span>
+          <span class="opt-text"><b>Standard desktop 5.x</b><small>Loads vkms render node; does not load mali_nsfix.</small></span>
+          <span class="chip off" data-chip>—</span>
+        </button>
+      </div>
+
+      <button type="button" class="btn btn-block" id="apply-route">Apply (reboot required)</button>
+      <button type="button" class="btn btn-tonal btn-block btn-gap" id="reboot-route">Reboot now</button>
+    </section>
+
+    <!-- 诊断 -->
+    <section id="view-diag" class="page">
+      <h1 class="page-title">Diagnostics</h1>
+      <p class="page-desc">Route, kernel, loaded modules, mali_nsfix state, render node and recent log lines.</p>
+      <pre id="diag-out" class="diag">…</pre>
+      <button type="button" class="btn btn-block" id="copy-diag">Copy</button>
+    </section>
+
+    <!-- 关于 -->
+    <section id="view-about" class="page">
+      <h1 class="page-title">About</h1>
+
+      <div class="panel panel-rows">
+        <div class="row"><span class="k">Module</span><span class="v" id="about-version">…</span></div>
+        <div class="row"><span class="k">Author</span><span class="v">misaka5202</span></div>
+        <div class="row"><span class="k">Repository</span><span class="v">misaka5202/droidspaces-lkm</span></div>
+      </div>
+
+      <div class="group-label">Language</div>
+      <div class="panel panel-rows">
+        <div class="row">
+          <span class="k">Language</span>
+          <span class="sel">
+            <button type="button" class="md-select" id="lang-select" aria-haspopup="listbox" aria-expanded="false">
+              <span class="md-select-label" id="lang-label">…</span>
+              <svg class="ic md-select-arrow" aria-hidden="true"><use href="#i-chev"/></svg>
+            </button>
+            <div class="md-menu" id="lang-menu" role="listbox"></div>
+          </span>
+        </div>
+        <div class="row">
+          <span class="k">Interface style</span>
+          <span class="seg" id="ui-switch">
+            <button type="button" class="seg-btn" data-ui="md3">Material 3</button>
+            <button type="button" class="seg-btn" data-ui="miuix">MIUIx</button>
+          </span>
+        </div>
+        <div class="row" id="monet-row" hidden>
+          <span class="k">Enable Monet for MIUIx</span>
+          <button type="button" class="switch" id="monet-switch" role="switch" aria-checked="false"><span class="switch-knob"></span></button>
+        </div>
+      </div>
+
+      <div class="group-label">Boot options</div>
+      <div class="panel panel-rows" id="flag-rows"></div>
+      <p class="foot-note">Changes apply after reboot.</p>
+
+      <div class="group-label">One-click packs</div>
+      <div class="stack">
+        <button type="button" class="link-row" id="pack5"><span>5.x RootFS builder</span><svg class="ic"><use href="#i-open"/></svg></button>
+        <button type="button" class="link-row" id="pack6"><span>6.x Anland RootFS</span><svg class="ic"><use href="#i-open"/></svg></button>
+      </div>
+
+      <div class="group-label">Actions</div>
+      <div class="stack">
+        <button type="button" class="link-row" id="reboot-about"><span>Reboot now</span><svg class="ic"><use href="#i-power"/></svg></button>
+      </div>
+
+      <p class="foot-note">The rest of this module is GPL-2.0.</p>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <button type="button" class="tab is-active" data-target="view-home">
+      <span class="tab-pill"><svg class="ic"><use href="#i-home"/></svg></span>
+      <span class="tab-label">Home</span>
+    </button>
+    <button type="button" class="tab" data-target="view-route">
+      <span class="tab-pill"><svg class="ic"><use href="#i-route"/></svg></span>
+      <span class="tab-label">Route</span>
+    </button>
+    <button type="button" class="tab" data-target="view-diag">
+      <span class="tab-pill"><svg class="ic"><use href="#i-diag"/></svg></span>
+      <span class="tab-label">Diagnostics</span>
+    </button>
+    <button type="button" class="tab" data-target="view-about">
+      <span class="tab-pill"><svg class="ic"><use href="#i-info"/></svg></span>
+      <span class="tab-label">About</span>
+    </button>
+  </nav>
+</div>
+
+<div id="toast" class="toast" role="status"></div>
+
+<!-- 内联图标集（自绘线性图标，无外部依赖） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><path d="M5 8h13m-3-3 3 3-3 3M19 16H6m3-3-3 3 3 3"/></symbol>
+    <symbol id="i-diag" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5M8 10.5h5M10.5 8v5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.8 2.8L16.2 9.5"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.2v.2"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></symbol>
+    <symbol id="i-six" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-desk" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M9 20h6M12 16.5V20"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8M7.5 6.5a7 7 0 1 0 9 0"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  </defs>
+</svg>
 
 </body>
 </html>
