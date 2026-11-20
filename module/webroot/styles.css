@@ -518,19 +518,19 @@ html[data-ui="miuix"] .switch[aria-checked="true"] .switch-knob { top: 3px; widt
  * 取不到时退回上面的 MIUIx 蓝色色板（亮/暗各一套）
  * ============================================================ */
 html[data-ui="miuix"][data-monet="on"] {
-  --c-primary:      var(--md-sys-color-primary, #3482ff);
+  --c-primary:      var(--md-sys-color-primary, #0f9d58);
   --c-on-primary:   var(--md-sys-color-on-primary, #ffffff);
-  --c-primary-c:    var(--md-sys-color-primary-container, #e3eeff);
-  --c-on-primary-c: var(--md-sys-color-on-primary-container, #0b4fc4);
-  --c-second-c:     var(--md-sys-color-secondary-container, #eaf1ff);
-  --c-on-second-c:  var(--md-sys-color-on-secondary-container, #1f5fd1);
-  --c-bg:           var(--md-sys-color-background, #f7f7f7);
+  --c-primary-c:    var(--md-sys-color-primary-container, #c8e6c9);
+  --c-on-primary-c: var(--md-sys-color-on-primary-container, #1b5e20);
+  --c-second-c:     var(--md-sys-color-secondary-container, #e3f2fd);
+  --c-on-second-c:  var(--md-sys-color-on-secondary-container, #0d47a1);
+  --c-bg:           var(--md-sys-color-background, #f1f8e9);
   --c-surface:      var(--md-sys-color-surface-container-low, var(--md-sys-color-surface-container, #ffffff));
-  --c-surface-hi:   var(--md-sys-color-surface-container-high, #f0f1f3);
-  --c-surface-hh:   var(--md-sys-color-surface-container-highest, #eef0f3);
-  --c-text:         var(--md-sys-color-on-surface, #111111);
-  --c-text-var:     var(--md-sys-color-on-surface-variant, #7b7f87);
-  --c-outline:      var(--md-sys-color-outline, #b8bcc4);
+  --c-surface-hi:   var(--md-sys-color-surface-container-high, #e8f5e9);
+  --c-surface-hh:   var(--md-sys-color-surface-container-highest, #dcedc8);
+  --c-text:         var(--md-sys-color-on-surface, #1b5e20);
+  --c-text-var:     var(--md-sys-color-on-surface-variant, #33691e);
+  --c-outline:      var(--md-sys-color-outline, #81c784);
   --c-error:        var(--md-sys-color-error, #e5483b);
   --c-error-c:      var(--md-sys-color-error-container, #fdebe9);
   --c-on-error-c:   var(--md-sys-color-on-error-container, #a8281d);

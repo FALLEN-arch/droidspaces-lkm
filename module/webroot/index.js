@@ -720,15 +720,17 @@ function hideRouteTabIfNotMtk() {
 
   $('appbar-title').textContent = t('tab.home');
 
-  // 先用缓存秒开，不等 shell
+  // 先用缓存秒开，不等 shell；没缓存才跑一次壳命令
   const cachedHome = cacheGet(HOME_CACHE);
   if (cachedHome) {
     renderHome(cachedHome);
     markSelected(ROUTES.includes(cachedHome.route) ? cachedHome.route : 'auto');
+  } else {
+    await refreshHome();
   }
   document.body.classList.remove('booting');
 
-  // 平台判定、首页数据并行；判定结果缓存，下次直接决定是否显示「路线」页签
+  // 平台判定、判定结果缓存，下次直接决定是否显示「路线」页签
   const mtkCached = cacheGet('dsl_is_mtk');
   if (mtkCached === false) hideRouteTabIfNotMtk();
   platformIsMtk().then((mtk) => {
@@ -745,7 +747,6 @@ function hideRouteTabIfNotMtk() {
       else if (currentView === 'view-diag') refreshDiag(false);
     }
   });
-  await refreshHome();
-  // 空闲时预取诊断，之后切到诊断页即可看到内容
-  setTimeout(() => refreshDiag(true), 300);
+  // 空闲时预取诊断，之后切到诊断页即可看到内容；尊重缓存，不强制重跑壳命令
+  setTimeout(() => refreshDiag(false), 300);
 })();
